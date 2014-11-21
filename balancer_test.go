@@ -61,13 +61,13 @@ func TestAll(t *testing.T) {
 			return net.Dial(network, addr)
 		},
 	}
-	testAttempts := int32(0)
+	checkAttempts := int32(0)
 	dialer3 := &Dialer{
 		Weight: 1,
 		QOS:    15,
 		Dial: func(network, addr string) (net.Conn, error) {
 			dialedBy = 3
-			if testAttempts < 4 {
+			if checkAttempts < 4 {
 				// Fail for a while
 				return nil, fmt.Errorf("Me no dialee")
 			} else {
@@ -75,8 +75,8 @@ func TestAll(t *testing.T) {
 				return net.Dial(network, addr)
 			}
 		},
-		Test: func() bool {
-			n := atomic.AddInt32(&testAttempts, 1)
+		Check: func() bool {
+			n := atomic.AddInt32(&checkAttempts, 1)
 			return n > 3
 		},
 	}
@@ -128,7 +128,7 @@ func TestAll(t *testing.T) {
 	assert.Error(t, err, "Dialing should have failed")
 
 	time.Sleep(1 * time.Second)
-	assert.Equal(t, 4, testAttempts, "Wrong number of test attempts on failed dialer")
+	assert.Equal(t, 4, checkAttempts, "Wrong number of check attempts on failed dialer")
 
 	// Test success after successful retest
 	conn, err = b.Dial("tcp", addr, 20)
