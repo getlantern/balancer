@@ -9,11 +9,23 @@ import (
 	"github.com/getlantern/withtimeout"
 )
 
+// Dialer captures the configuration for dialing an endpoint
 type Dialer struct {
+	// Weight: determines how often this Dialer is used relative to the other
+	// Dialers on the balancer.
 	Weight int
-	QOS    int
-	Dial   func(network, addr string) (net.Conn, error)
-	Test   func() bool
+
+	// QOS: identifies the quality of service provided by this dialer. Higher
+	// numbers equal higher quality. "Quality" in this case is loosely defined,
+	// but can mean things such as reliability, speed, etc.
+	QOS int
+
+	// Dial: this function dials the endpoint.
+	Dial func(network, addr string) (net.Conn, error)
+
+	// Test: (optional) - function that's used to test connectivity to the
+	// endpoint if Dial ever fails.
+	Test func() bool
 }
 
 var (
@@ -49,6 +61,7 @@ func (d *dialer) start() {
 		}
 
 		succeeded := func() {
+			atomic.StoreInt32(&d.active, 1)
 			consecFailures = 0
 			timer.Reset(longDuration)
 		}

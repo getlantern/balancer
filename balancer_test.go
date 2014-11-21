@@ -76,8 +76,8 @@ func TestAll(t *testing.T) {
 			}
 		},
 		Test: func() bool {
-			atomic.AddInt32(&testAttempts, 1)
-			return false
+			n := atomic.AddInt32(&testAttempts, 1)
+			return n > 3
 		},
 	}
 
@@ -130,7 +130,7 @@ func TestAll(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, 4, testAttempts, "Wrong number of test attempts on failed dialer")
 
-	// Test success after successful test
+	// Test success after successful retest
 	conn, err = b.Dial("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 3, dialedBy, "Wrong dialedBy")
