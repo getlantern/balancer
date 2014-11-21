@@ -71,6 +71,7 @@ func TestAll(t *testing.T) {
 
 	// Test successful single dialer
 	b := New(dialer1)
+	defer b.Close()
 	conn, err := b.Dial("tcp", addr, 0)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
@@ -79,6 +80,7 @@ func TestAll(t *testing.T) {
 	// Test QOS
 	dialedBy = 0
 	b = New(dialer1, dialer2)
+	defer b.Close()
 	conn, err = b.Dial("tcp", addr, 5)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
@@ -94,6 +96,7 @@ func TestAll(t *testing.T) {
 	// Test success with failing dialer
 	dialedBy = 0
 	b = New(dialer1, dialer2, dialer3)
+	defer b.Close()
 	conn, err = b.Dial("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")

@@ -21,20 +21,12 @@ type Balancer struct {
 	dialers []*dialer
 }
 
-type Dialer struct {
-	Weight int
-	QOS    int
-	Dial   func(network, addr string) (net.Conn, error)
-}
-
-type dialer struct {
-	*Dialer
-}
-
 func New(dialers ...*Dialer) *Balancer {
 	dhs := make([]*dialer, 0, len(dialers))
 	for _, d := range dialers {
-		dhs = append(dhs, &dialer{Dialer: d})
+		dl := &dialer{Dialer: d}
+		dl.start()
+		dhs = append(dhs, dl)
 	}
 	return &Balancer{
 		dialers: dhs,
@@ -58,6 +50,12 @@ func (b *Balancer) Dial(network, addr string, targetQOS int) (net.Conn, error) {
 	}
 }
 
+func (b *Balancer) Close() {
+	for _, d := range b.dialers {
+		d.stop()
+	}
+}
+
 func (b *Balancer) getDialers() []*dialer {
 	result := make([]*dialer, len(b.dialers))
 	copy(result, b.dialers)
@@ -65,31 +63,29 @@ func (b *Balancer) getDialers() []*dialer {
 }
 
 func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*dialer) {
-	dialersToTry := dialers
-	if targetQOS > 0 {
-		// Weed out dialers with too low QOS, preferring higher QOS
-		sort.Sort(ByQOS(dialers))
-		dialersToTry = make([]*dialer, 0)
-		for i, d := range dialers {
-			if d.QOS >= targetQOS {
-				log.Tracef("Including dialer with QOS %d meeting targetQOS %d", d.QOS, targetQOS)
-				dialersToTry = append(dialersToTry, d)
-			} else if i == len(dialers)-1 && len(dialersToTry) == 0 {
-				log.Trace("No dialers meet targetQOS, using highest QOS dialer of remaining")
-				dialersToTry = append(dialersToTry, d)
-			}
+	// Weed out inactive dialers and those with too low QOS, preferring higher
+	// QOS
+	sort.Sort(ByQOS(dialers))
+	filtered := make([]*dialer, 0)
+	for i, d := range dialers {
+		if d.QOS >= targetQOS {
+			log.Tracef("Including dialer with QOS %d meeting targetQOS %d", d.QOS, targetQOS)
+			filtered = append(filtered, d)
+		} else if i == len(dialers)-1 && len(filtered) == 0 {
+			log.Trace("No filtered meet targetQOS, using highest QOS dialer of remaining")
+			filtered = append(filtered, d)
 		}
 	}
 
 	totalWeights := 0
-	for _, d := range dialersToTry {
+	for _, d := range filtered {
 		totalWeights = totalWeights + d.Weight
 	}
 
 	// Pick a random server using a target value between 0 and the total weights
 	t := rand.Intn(totalWeights)
 	aw := 0
-	for _, d := range dialersToTry {
+	for _, d := range filtered {
 		aw = aw + d.Weight
 		if aw > t {
 			log.Trace("Reached random target value, using this dialer")
