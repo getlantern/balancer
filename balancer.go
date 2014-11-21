@@ -44,6 +44,7 @@ func (b *Balancer) Dial(network, addr string, targetQOS int) (net.Conn, error) {
 		conn, err := d.Dial(network, addr)
 		if err != nil {
 			log.Tracef("Unable to dial: %s", err)
+			d.onError(err)
 			continue
 		}
 		return conn, nil
