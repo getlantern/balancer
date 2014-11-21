@@ -42,7 +42,7 @@ func New(dialers ...*Dialer) *Balancer {
 // relative Weights.
 //
 // If a Dialer fails to connect, Dial will keep falling back through the
-// remaining dialers until it either manages to connect, or runs out of dialers
+// remaining Dialers until it either manages to connect, or runs out of dialers
 // in which case it returns an error.
 func (b *Balancer) Dial(network, addr string, targetQOS int) (net.Conn, error) {
 	dialers := b.getDialers()
