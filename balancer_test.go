@@ -67,7 +67,13 @@ func TestAll(t *testing.T) {
 		QOS:    15,
 		Dial: func(network, addr string) (net.Conn, error) {
 			dialedBy = 3
-			return nil, fmt.Errorf("Me no dialee")
+			if testAttempts < 4 {
+				// Fail for a while
+				return nil, fmt.Errorf("Me no dialee")
+			} else {
+				// Eventually succeed
+				return net.Dial(network, addr)
+			}
 		},
 		Test: func() bool {
 			atomic.AddInt32(&testAttempts, 1)
@@ -81,7 +87,9 @@ func TestAll(t *testing.T) {
 	conn, err := b.Dial("tcp", addr, 0)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
-	doTestConn(t, conn)
+	if err == nil {
+		doTestConn(t, conn)
+	}
 
 	// Test QOS
 	dialedBy = 0
@@ -90,14 +98,18 @@ func TestAll(t *testing.T) {
 	conn, err = b.Dial("tcp", addr, 5)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
-	doTestConn(t, conn)
+	if err == nil {
+		doTestConn(t, conn)
+	}
 
 	// Test random selection
 	dialedBy = 0
 	conn, err = b.Dial("tcp", addr, 0)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 2, dialedBy, "Wrong dialedBy (note this has a 1/%d chance of failing)", (dialer1.Weight + dialer2.Weight))
-	doTestConn(t, conn)
+	if err == nil {
+		doTestConn(t, conn)
+	}
 
 	// Test success with failing dialer
 	dialedBy = 0
@@ -106,7 +118,9 @@ func TestAll(t *testing.T) {
 	conn, err = b.Dial("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
-	doTestConn(t, conn)
+	if err == nil {
+		doTestConn(t, conn)
+	}
 
 	// Test failure
 	b = New(dialer3)
@@ -115,6 +129,14 @@ func TestAll(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, 4, testAttempts, "Wrong number of test attempts on failed dialer")
+
+	// Test success after successful test
+	conn, err = b.Dial("tcp", addr, 20)
+	assert.NoError(t, err, "Dialing should have succeeded")
+	assert.Equal(t, 3, dialedBy, "Wrong dialedBy")
+	if err == nil {
+		doTestConn(t, conn)
+	}
 }
 
 func doTestConn(t *testing.T, conn net.Conn) {
