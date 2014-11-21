@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -60,12 +61,17 @@ func TestAll(t *testing.T) {
 			return net.Dial(network, addr)
 		},
 	}
+	testAttempts := int32(0)
 	dialer3 := &Dialer{
 		Weight: 1,
 		QOS:    15,
 		Dial: func(network, addr string) (net.Conn, error) {
 			dialedBy = 3
 			return nil, fmt.Errorf("Me no dialee")
+		},
+		Test: func() bool {
+			atomic.AddInt32(&testAttempts, 1)
+			return false
 		},
 	}
 
@@ -106,6 +112,9 @@ func TestAll(t *testing.T) {
 	b = New(dialer3)
 	_, err = b.Dial("tcp", addr, 0)
 	assert.Error(t, err, "Dialing should have failed")
+
+	time.Sleep(2 * time.Second)
+	log.Debugf("Test attempts: %d", testAttempts)
 }
 
 func doTestConn(t *testing.T, conn net.Conn) {

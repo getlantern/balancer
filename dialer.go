@@ -45,7 +45,8 @@ func (d *dialer) start() {
 			if timeout > maxTestTimeout {
 				timeout = maxTestTimeout
 			}
-			timer.Reset(maxTestTimeout * time.Second)
+			log.Debugf("Failed! Timeout: %s", timeout)
+			timer.Reset(timeout)
 		}
 
 		succeeded := func() {
@@ -62,6 +63,7 @@ func (d *dialer) start() {
 				}
 				failed()
 			case <-timer.C:
+				log.Debug("Testing")
 				ok := d.Test()
 				if ok {
 					succeeded()
