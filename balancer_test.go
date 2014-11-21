@@ -44,10 +44,6 @@ func TestAll(t *testing.T) {
 
 	dialedBy := 0
 
-	// Set up balancer
-	b := New()
-
-	// Test successful single dialer
 	dialer1 := &Dialer{
 		Weight: 1,
 		QOS:    10,
@@ -56,14 +52,6 @@ func TestAll(t *testing.T) {
 			return net.Dial(network, addr)
 		},
 	}
-	b.Add(dialer1)
-	conn, err := b.Dial("tcp", addr, 0)
-	assert.NoError(t, err, "Dialing should have succeeded")
-	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
-	doTestConn(t, conn)
-
-	// Test QOS
-	dialedBy = 0
 	dialer2 := &Dialer{
 		Weight: 10000000,
 		QOS:    1,
@@ -72,7 +60,25 @@ func TestAll(t *testing.T) {
 			return net.Dial(network, addr)
 		},
 	}
-	b.Add(dialer2)
+	dialer3 := &Dialer{
+		Weight: 1,
+		QOS:    15,
+		Dial: func(network, addr string) (net.Conn, error) {
+			dialedBy = 3
+			return nil, fmt.Errorf("Me no dialee")
+		},
+	}
+
+	// Test successful single dialer
+	b := New(dialer1)
+	conn, err := b.Dial("tcp", addr, 0)
+	assert.NoError(t, err, "Dialing should have succeeded")
+	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
+	doTestConn(t, conn)
+
+	// Test QOS
+	dialedBy = 0
+	b = New(dialer1, dialer2)
 	conn, err = b.Dial("tcp", addr, 5)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
@@ -87,23 +93,14 @@ func TestAll(t *testing.T) {
 
 	// Test success with failing dialer
 	dialedBy = 0
-	dialer3 := &Dialer{
-		Weight: 1,
-		QOS:    15,
-		Dial: func(network, addr string) (net.Conn, error) {
-			dialedBy = 3
-			return nil, fmt.Errorf("Me no dialee")
-		},
-	}
-	b.Add(dialer3)
+	b = New(dialer1, dialer2, dialer3)
 	conn, err = b.Dial("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
 	doTestConn(t, conn)
 
 	// Test failure
-	b.Remove(dialer1)
-	b.Remove(dialer2)
+	b = New(dialer3)
 	_, err = b.Dial("tcp", addr, 0)
 	assert.Error(t, err, "Dialing should have failed")
 }
