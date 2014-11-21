@@ -78,7 +78,7 @@ func (b *Balancer) getDialers() []*dialer {
 func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*dialer) {
 	// Weed out inactive dialers and those with too low QOS, preferring higher
 	// QOS
-	sort.Sort(ByQOS(dialers))
+	sort.Sort(byQOS(dialers))
 	filtered := make([]*dialer, 0)
 	for i, d := range dialers {
 		if !d.isactive() {
@@ -139,9 +139,9 @@ func without(dialers []*dialer, i int) []*dialer {
 	}
 }
 
-// ByQOS implements sort.Interface for []*dialer based on the QOS
-type ByQOS []*dialer
+// byQOS implements sort.Interface for []*dialer based on the QOS
+type byQOS []*dialer
 
-func (a ByQOS) Len() int           { return len(a) }
-func (a ByQOS) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByQOS) Less(i, j int) bool { return a[i].QOS < a[j].QOS }
+func (a byQOS) Len() int           { return len(a) }
+func (a byQOS) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byQOS) Less(i, j int) bool { return a[i].QOS < a[j].QOS }
