@@ -113,8 +113,8 @@ func TestAll(t *testing.T) {
 	_, err = b.Dial("tcp", addr, 0)
 	assert.Error(t, err, "Dialing should have failed")
 
-	time.Sleep(2 * time.Second)
-	log.Debugf("Test attempts: %d", testAttempts)
+	time.Sleep(1 * time.Second)
+	assert.Equal(t, 4, testAttempts, "Wrong number of test attempts on failed dialer")
 }
 
 func doTestConn(t *testing.T, conn net.Conn) {

@@ -41,11 +41,10 @@ func (d *dialer) start() {
 		failed := func() {
 			atomic.StoreInt32(&d.active, 0)
 			consecFailures += 1
-			timeout := time.Duration(consecFailures*consecFailures) * time.Second
+			timeout := time.Duration(consecFailures*consecFailures) * 100 * time.Millisecond
 			if timeout > maxTestTimeout {
 				timeout = maxTestTimeout
 			}
-			log.Debugf("Failed! Timeout: %s", timeout)
 			timer.Reset(timeout)
 		}
 
@@ -63,7 +62,6 @@ func (d *dialer) start() {
 				}
 				failed()
 			case <-timer.C:
-				log.Debug("Testing")
 				ok := d.Test()
 				if ok {
 					succeeded()
