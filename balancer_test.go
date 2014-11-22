@@ -43,13 +43,13 @@ func TestAll(t *testing.T) {
 	}()
 	addr := l.Addr().String()
 
-	dialedBy := 0
+	dialedBy := int32(0)
 
 	dialer1 := &Dialer{
 		Weight: 1,
 		QOS:    10,
 		Dial: func(network, addr string) (net.Conn, error) {
-			dialedBy = 1
+			atomic.StoreInt32(&dialedBy, 1)
 			return net.Dial(network, addr)
 		},
 	}
@@ -57,7 +57,7 @@ func TestAll(t *testing.T) {
 		Weight: 10000000,
 		QOS:    1,
 		Dial: func(network, addr string) (net.Conn, error) {
-			dialedBy = 2
+			atomic.StoreInt32(&dialedBy, 2)
 			return net.Dial(network, addr)
 		},
 	}
@@ -66,7 +66,7 @@ func TestAll(t *testing.T) {
 		Weight: 1,
 		QOS:    15,
 		Dial: func(network, addr string) (net.Conn, error) {
-			dialedBy = 3
+			atomic.StoreInt32(&dialedBy, 3)
 			if checkAttempts < 6 {
 				// Fail for a while
 				return nil, fmt.Errorf("Me no dialee")
@@ -87,7 +87,7 @@ func TestAll(t *testing.T) {
 		Weight: 1,
 		QOS:    15,
 		Dial: func(network, addr string) (net.Conn, error) {
-			dialedBy = 4
+			atomic.StoreInt32(&dialedBy, 4)
 			defer atomic.AddInt32(&d4attempts, 1)
 			if d4attempts < 1 {
 				// Fail once
@@ -148,15 +148,24 @@ func TestAll(t *testing.T) {
 	// Test failure
 	b = New(dialer3)
 	maxCheckTimeout = 100 * time.Millisecond
-	// Dial a bunch of times to hit different failure branches
-	for i := 0; i < 50; i++ {
-		_, err = b.Dial("tcp", addr)
-		assert.Error(t, err, "Dialing should have failed")
-		time.Sleep(10 * time.Millisecond)
+	// Dial a bunch of times on multiple goroutines to hit different failure branches
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for j := 0; j < 2; j++ {
+		bn := b
+		go func() {
+			for i := 0; i < 50; i++ {
+				_, err := bn.Dial("tcp", addr)
+				assert.Error(t, err, "Dialing should have failed")
+				time.Sleep(10 * time.Millisecond)
+			}
+			wg.Done()
+		}()
 	}
 
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, 6, checkAttempts, "Wrong number of check attempts on failed dialer")
+	wg.Wait()
 
 	// Test success after successful recheck using custom check
 	conn, err = b.DialQOS("tcp", addr, 20)
