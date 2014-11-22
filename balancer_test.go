@@ -84,7 +84,7 @@ func TestAll(t *testing.T) {
 	// Test successful single dialer
 	b := New(dialer1)
 	defer b.Close()
-	conn, err := b.Dial("tcp", addr, 0)
+	conn, err := b.Dial("tcp", addr)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
 	if err == nil {
@@ -95,7 +95,7 @@ func TestAll(t *testing.T) {
 	dialedBy = 0
 	b = New(dialer1, dialer2)
 	defer b.Close()
-	conn, err = b.Dial("tcp", addr, 5)
+	conn, err = b.DialQOS("tcp", addr, 5)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
 	if err == nil {
@@ -104,7 +104,7 @@ func TestAll(t *testing.T) {
 
 	// Test random selection
 	dialedBy = 0
-	conn, err = b.Dial("tcp", addr, 0)
+	conn, err = b.Dial("tcp", addr)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 2, dialedBy, "Wrong dialedBy (note this has a 1/%d chance of failing)", (dialer1.Weight + dialer2.Weight))
 	if err == nil {
@@ -115,7 +115,7 @@ func TestAll(t *testing.T) {
 	dialedBy = 0
 	b = New(dialer1, dialer2, dialer3)
 	defer b.Close()
-	conn, err = b.Dial("tcp", addr, 20)
+	conn, err = b.DialQOS("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")
 	if err == nil {
@@ -124,14 +124,14 @@ func TestAll(t *testing.T) {
 
 	// Test failure
 	b = New(dialer3)
-	_, err = b.Dial("tcp", addr, 0)
+	_, err = b.Dial("tcp", addr)
 	assert.Error(t, err, "Dialing should have failed")
 
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, 4, checkAttempts, "Wrong number of check attempts on failed dialer")
 
 	// Test success after successful retest
-	conn, err = b.Dial("tcp", addr, 20)
+	conn, err = b.DialQOS("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 3, dialedBy, "Wrong dialedBy")
 	if err == nil {

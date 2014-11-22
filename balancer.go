@@ -35,7 +35,7 @@ func New(dialers ...*Dialer) *Balancer {
 	}
 }
 
-// Dial dials network, addr using one of the currently active configured
+// DialQOS dials network, addr using one of the currently active configured
 // Dialers. It attempts to use a Dialer whose QOS is higher than targetQOS, but
 // will use the highest QOS Dialer if none meet targetQOS. When multiple Dialers
 // meet the targetQOS, load is distributed amongst them randomly based on their
@@ -44,7 +44,7 @@ func New(dialers ...*Dialer) *Balancer {
 // If a Dialer fails to connect, Dial will keep falling back through the
 // remaining Dialers until it either manages to connect, or runs out of dialers
 // in which case it returns an error.
-func (b *Balancer) Dial(network, addr string, targetQOS int) (net.Conn, error) {
+func (b *Balancer) DialQOS(network, addr string, targetQOS int) (net.Conn, error) {
 	dialers := b.getDialers()
 	for {
 		if len(dialers) == 0 {
@@ -63,6 +63,11 @@ func (b *Balancer) Dial(network, addr string, targetQOS int) (net.Conn, error) {
 		}
 		return conn, nil
 	}
+}
+
+// Dial is like DialQOS with a targetQOS of 0.
+func (b *Balancer) Dial(network, addr string) (net.Conn, error) {
+	return b.DialQOS(network, addr, 0)
 }
 
 // Close closes this Balancer, stopping all background processing. You must call
