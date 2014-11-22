@@ -50,7 +50,7 @@ type dialer struct {
 }
 
 func (d *dialer) start() {
-	d.errCh = make(chan time.Time, 10)
+	d.errCh = make(chan time.Time, 1)
 	if d.Check == nil {
 		d.Check = d.defaultCheck
 	}
