@@ -76,6 +76,7 @@ func TestAll(t *testing.T) {
 			}
 		},
 		Check: func() bool {
+			time.Sleep(100 * time.Millisecond)
 			n := atomic.AddInt32(&checkAttempts, 1)
 			return n > 3
 		},
@@ -146,11 +147,15 @@ func TestAll(t *testing.T) {
 
 	// Test failure
 	b = New(dialer3)
-	_, err = b.Dial("tcp", addr)
-	assert.Error(t, err, "Dialing should have failed")
+	maxCheckTimeout = 100 * time.Millisecond
+	// Dial a bunch of times to hit different failure branches
+	for i := 0; i < 20; i++ {
+		_, err = b.Dial("tcp", addr)
+		assert.Error(t, err, "Dialing should have failed")
+	}
 
 	time.Sleep(1 * time.Second)
-	assert.Equal(t, 4, checkAttempts, "Wrong number of check attempts on failed dialer")
+	assert.Equal(t, 5, checkAttempts, "Wrong number of check attempts on failed dialer")
 
 	// Test success after successful recheck using custom check
 	conn, err = b.DialQOS("tcp", addr, 20)
