@@ -81,6 +81,23 @@ func TestAll(t *testing.T) {
 		},
 	}
 
+	d4attempts := int32(0)
+	dialer4 := &Dialer{
+		Weight: 1,
+		QOS:    15,
+		Dial: func(network, addr string) (net.Conn, error) {
+			dialedBy = 4
+			defer atomic.AddInt32(&d4attempts, 1)
+			if d4attempts < 1 {
+				// Fail once
+				return nil, fmt.Errorf("Me no dialee")
+			} else {
+				// Eventually succeed
+				return net.Dial(network, addr)
+			}
+		},
+	}
+
 	// Test successful single dialer
 	b := New(dialer1)
 	defer b.Close()
@@ -130,13 +147,30 @@ func TestAll(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, 4, checkAttempts, "Wrong number of check attempts on failed dialer")
 
-	// Test success after successful retest
+	// Test success after successful recheck using custom check
 	conn, err = b.DialQOS("tcp", addr, 20)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 3, dialedBy, "Wrong dialedBy")
 	if err == nil {
 		doTestConn(t, conn)
 	}
+
+	// Test failure
+	b = New(dialer4)
+	_, err = b.Dial("tcp", addr)
+	assert.Error(t, err, "Dialing should have failed")
+
+	time.Sleep(1 * time.Second)
+	assert.Equal(t, 2, d4attempts, "Wrong number of dial attempts on failed dialer")
+
+	// Test success after successful retest using default check
+	conn, err = b.DialQOS("tcp", addr, 20)
+	assert.NoError(t, err, "Dialing should have succeeded")
+	assert.Equal(t, 4, dialedBy, "Wrong dialedBy")
+	if err == nil {
+		doTestConn(t, conn)
+	}
+
 }
 
 func doTestConn(t *testing.T, conn net.Conn) {
