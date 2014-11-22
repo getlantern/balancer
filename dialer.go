@@ -3,7 +3,7 @@ package balancer
 import (
 	"net"
 	"net/http"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/getlantern/withtimeout"
@@ -43,27 +43,31 @@ var (
 
 type dialer struct {
 	*Dialer
-	lastFailed         time.Time
-	lastCheckSucceeded time.Time
-	timeMutex          sync.RWMutex
-	errCh              chan time.Time
+	active int32
+	errCh  chan time.Time
 }
 
 func (d *dialer) start() {
-	d.errCh = make(chan time.Time, 1)
+	d.active = 1
+	d.errCh = make(chan time.Time, 10)
 	if d.Check == nil {
 		d.Check = d.defaultCheck
 	}
 
 	go func() {
+		lastFailed := time.Time{}
+		lastCheckSucceeded := time.Time{}
 		consecCheckFailures := 0
 		timer := time.NewTimer(longDuration)
 
 		for {
-			if d.failedAfterSuccessfulCheck() {
+			if lastFailed.After(lastCheckSucceeded) {
 				log.Trace("Inactive, scheduling check")
+				atomic.StoreInt32(&d.active, 0)
 				timeout := time.Duration(consecCheckFailures*consecCheckFailures) * 100 * time.Millisecond
 				timer.Reset(timeout)
+			} else {
+				atomic.StoreInt32(&d.active, 1)
 			}
 			select {
 			case t, ok := <-d.errCh:
@@ -71,11 +75,11 @@ func (d *dialer) start() {
 					log.Trace("dialer stopped")
 					return
 				}
-				d.markFailed(t)
+				lastFailed = t
 			case <-timer.C:
 				ok := d.Check()
 				if ok {
-					d.markCheckSucceeded(time.Now())
+					lastCheckSucceeded = time.Now()
 					timer.Reset(longDuration)
 				} else {
 					consecCheckFailures += 1
@@ -85,29 +89,8 @@ func (d *dialer) start() {
 	}()
 }
 
-func (d *dialer) markFailed(t time.Time) {
-	log.Tracef("Failed at: %s", t)
-	d.timeMutex.Lock()
-	d.lastFailed = t
-	d.timeMutex.Unlock()
-}
-
-func (d *dialer) markCheckSucceeded(t time.Time) {
-	log.Tracef("Check succeeded at: %s", t)
-	d.timeMutex.Lock()
-	d.lastCheckSucceeded = t
-	d.timeMutex.Unlock()
-}
-
 func (d *dialer) isActive() bool {
-	d.timeMutex.RLock()
-	result := !d.failedAfterSuccessfulCheck()
-	d.timeMutex.RUnlock()
-	return result
-}
-
-func (d *dialer) failedAfterSuccessfulCheck() bool {
-	return d.lastFailed.After(d.lastCheckSucceeded)
+	return atomic.LoadInt32(&d.active) == 1
 }
 
 func (d *dialer) onError(err error) {
