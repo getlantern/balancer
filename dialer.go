@@ -62,12 +62,13 @@ func (d *dialer) start() {
 
 		for {
 			if lastFailed.After(lastCheckSucceeded) {
-				log.Trace("Inactive, scheduling check")
 				atomic.StoreInt32(&d.active, 0)
+				log.Trace("Inactive, scheduling check")
 				timeout := time.Duration(consecCheckFailures*consecCheckFailures) * 100 * time.Millisecond
 				timer.Reset(timeout)
 			} else {
 				atomic.StoreInt32(&d.active, 1)
+				log.Trace("Active")
 			}
 			select {
 			case t, ok := <-d.errCh:
@@ -98,7 +99,7 @@ func (d *dialer) onError(err error) {
 	case d.errCh <- time.Now():
 		log.Trace("Error reported")
 	default:
-		log.Trace("There was already a pending error, ignoring new one")
+		log.Trace("Errors already pending, ignoring new one")
 	}
 }
 
