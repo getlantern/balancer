@@ -24,9 +24,9 @@ type Dialer struct {
 	Dial func(network, addr string) (net.Conn, error)
 
 	// Check: (optional) - When dialing fails, this Dialer is deactivated (taken
-	// out of rotation). Check is a function that's used to periodically check
-	// whether or not Dial works. As soon as there is a successful check, this
-	// Dialer will be activated (put back in rotation).
+	// out of rotation). Check is a function that's used to periodically after a
+	// failed dial to check whether or not Dial works again. As soon as there is
+	// a successful check, this Dialer will be activated (put back in rotation).
 	//
 	// If Check is not specified, a default Check will be used that makes an
 	// HTTP request to http://www.google.com/humans.txt using this Dialer.
