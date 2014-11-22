@@ -3,7 +3,7 @@ package balancer
 import (
 	"net"
 	"net/http"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/getlantern/withtimeout"
@@ -43,13 +43,14 @@ var (
 
 type dialer struct {
 	*Dialer
-	active int32
-	errCh  chan error
+	lastFailed         time.Time
+	lastCheckSucceeded time.Time
+	timeMutex          sync.RWMutex
+	errCh              chan time.Time
 }
 
 func (d *dialer) start() {
-	d.active = 1
-	d.errCh = make(chan error, 1)
+	d.errCh = make(chan time.Time, 10)
 	if d.Check == nil {
 		d.Check = d.defaultCheck
 	}
@@ -59,23 +60,22 @@ func (d *dialer) start() {
 		timer := time.NewTimer(longDuration)
 
 		for {
-			if d.active == 0 {
+			if d.failedAfterSuccessfulCheck() {
 				log.Trace("Inactive, scheduling check")
 				timeout := time.Duration(consecCheckFailures*consecCheckFailures) * 100 * time.Millisecond
 				timer.Reset(timeout)
 			}
 			select {
-			case _, ok := <-d.errCh:
+			case t, ok := <-d.errCh:
 				if !ok {
 					log.Trace("dialer stopped")
 					return
 				}
-				log.Trace("Error, deactivating dialer")
-				atomic.StoreInt32(&d.active, 0)
+				d.markFailed(t)
 			case <-timer.C:
 				ok := d.Check()
 				if ok {
-					atomic.StoreInt32(&d.active, 1)
+					d.markCheckSucceeded(time.Now())
 					timer.Reset(longDuration)
 				} else {
 					consecCheckFailures += 1
@@ -85,13 +85,34 @@ func (d *dialer) start() {
 	}()
 }
 
-func (d *dialer) isactive() bool {
-	return atomic.LoadInt32(&d.active) == 1
+func (d *dialer) markFailed(t time.Time) {
+	log.Tracef("Failed at: %s", t)
+	d.timeMutex.Lock()
+	d.lastFailed = t
+	d.timeMutex.Unlock()
+}
+
+func (d *dialer) markCheckSucceeded(t time.Time) {
+	log.Tracef("Check succeeded at: %s", t)
+	d.timeMutex.Lock()
+	d.lastCheckSucceeded = t
+	d.timeMutex.Unlock()
+}
+
+func (d *dialer) isActive() bool {
+	d.timeMutex.RLock()
+	result := !d.failedAfterSuccessfulCheck()
+	d.timeMutex.RUnlock()
+	return result
+}
+
+func (d *dialer) failedAfterSuccessfulCheck() bool {
+	return d.lastFailed.After(d.lastCheckSucceeded)
 }
 
 func (d *dialer) onError(err error) {
 	select {
-	case d.errCh <- err:
+	case d.errCh <- time.Now():
 		log.Trace("Error reported")
 	default:
 		log.Trace("There was already a pending error, ignoring new one")

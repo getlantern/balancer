@@ -91,7 +91,7 @@ func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*d
 	filtered := make([]*dialer, 0)
 	highestQOS := 0
 	for _, d := range dialers {
-		if !d.isactive() {
+		if !d.isActive() {
 			log.Trace("Excluding inactive dialer")
 			continue
 		}
@@ -106,7 +106,7 @@ func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*d
 	if len(filtered) == 0 {
 		log.Trace("No dialers meet targetQOS, finding remaining with highest QOS")
 		for _, d := range dialers {
-			if !d.isactive() {
+			if !d.isActive() {
 				log.Trace("Excluding inactive dialer")
 				continue
 			}
