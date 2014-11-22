@@ -37,9 +37,9 @@ func New(dialers ...*Dialer) *Balancer {
 
 // DialQOS dials network, addr using one of the currently active configured
 // Dialers. It attempts to use a Dialer whose QOS is higher than targetQOS, but
-// will use the highest QOS Dialer if none meet targetQOS. When multiple Dialers
-// meet the targetQOS, load is distributed amongst them randomly based on their
-// relative Weights.
+// will use the highest QOS Dialer(s) if none meet targetQOS. When multiple
+// Dialers meet the targetQOS, load is distributed amongst them randomly based
+// on their relative Weights.
 //
 // If a Dialer fails to connect, Dial will keep falling back through the
 // remaining Dialers until it either manages to connect, or runs out of dialers
@@ -89,22 +89,36 @@ func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*d
 	// QOS
 	sort.Sort(byQOS(dialers))
 	filtered := make([]*dialer, 0)
-	for i, d := range dialers {
+	highestQOS := 0
+	for _, d := range dialers {
 		if !d.isactive() {
 			log.Trace("Excluding inactive dialer")
 			continue
 		}
 
+		highestQOS = d.QOS // don't need to compare since dialers are already sorted by QOS
 		if d.QOS >= targetQOS {
 			log.Tracef("Including dialer with QOS %d meeting targetQOS %d", d.QOS, targetQOS)
-			filtered = append(filtered, d)
-		} else if i == len(dialers)-1 && len(filtered) == 0 {
-			log.Trace("No dialers meet targetQOS, using highest QOS dialer of remaining")
 			filtered = append(filtered, d)
 		}
 	}
 
 	if len(filtered) == 0 {
+		log.Trace("No dialers meet targetQOS, finding remaining with highest QOS")
+		for _, d := range dialers {
+			if !d.isactive() {
+				log.Trace("Excluding inactive dialer")
+				continue
+			}
+
+			if d.QOS == highestQOS {
+				filtered = append(filtered, d)
+			}
+		}
+	}
+
+	if len(filtered) == 0 {
+		log.Trace("Still no dialers!")
 		return nil, nil
 	}
 
