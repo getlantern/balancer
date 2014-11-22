@@ -98,8 +98,13 @@ func TestAll(t *testing.T) {
 		},
 	}
 
+	// Test failure with no dialers
+	b := New()
+	_, err = b.Dial("tcp", addr)
+	assert.Error(t, err, "Dialing with no dialers should have failed")
+
 	// Test successful single dialer
-	b := New(dialer1)
+	b = New(dialer1)
 	defer b.Close()
 	conn, err := b.Dial("tcp", addr)
 	assert.NoError(t, err, "Dialing should have succeeded")
