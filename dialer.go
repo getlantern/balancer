@@ -49,7 +49,7 @@ type dialer struct {
 
 func (d *dialer) start() {
 	d.active = 1
-	d.errCh = make(chan error, 1000)
+	d.errCh = make(chan error, 1)
 	if d.Check == nil {
 		d.Check = d.defaultCheck
 	}
@@ -99,7 +99,12 @@ func (d *dialer) isactive() bool {
 }
 
 func (d *dialer) onError(err error) {
-	d.errCh <- err
+	select {
+	case d.errCh <- err:
+		log.Trace("Error reported")
+	default:
+		log.Trace("There was already a pending error, ignoring new one")
+	}
 }
 
 func (d *dialer) stop() {
