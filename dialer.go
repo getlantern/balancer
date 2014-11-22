@@ -49,7 +49,7 @@ type dialer struct {
 
 func (d *dialer) start() {
 	d.active = 1
-	d.errCh = make(chan time.Time, 10)
+	d.errCh = make(chan time.Time, 1)
 	if d.Check == nil {
 		d.Check = d.defaultCheck
 	}
