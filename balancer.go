@@ -124,14 +124,14 @@ func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*d
 
 	totalWeights := 0
 	for _, d := range filtered {
-		totalWeights = totalWeights + d.Weight
+		totalWeights += d.Weight
 	}
 
 	// Pick a random server using a target value between 0 and the total weights
 	t := rand.Intn(totalWeights)
 	aw := 0
 	for _, d := range filtered {
-		aw = aw + d.Weight
+		aw += d.Weight
 		if aw > t {
 			log.Trace("Reached random target value, using this dialer")
 			return d, withoutDialer(dialers, d)

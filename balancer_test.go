@@ -67,7 +67,7 @@ func TestAll(t *testing.T) {
 		QOS:    15,
 		Dial: func(network, addr string) (net.Conn, error) {
 			dialedBy = 3
-			if checkAttempts < 4 {
+			if checkAttempts < 6 {
 				// Fail for a while
 				return nil, fmt.Errorf("Me no dialee")
 			} else {
@@ -78,7 +78,7 @@ func TestAll(t *testing.T) {
 		Check: func() bool {
 			time.Sleep(100 * time.Millisecond)
 			n := atomic.AddInt32(&checkAttempts, 1)
-			return n > 3
+			return n > 5
 		},
 	}
 
@@ -156,7 +156,7 @@ func TestAll(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-	assert.Equal(t, 5, checkAttempts, "Wrong number of check attempts on failed dialer")
+	assert.Equal(t, 6, checkAttempts, "Wrong number of check attempts on failed dialer")
 
 	// Test success after successful recheck using custom check
 	conn, err = b.DialQOS("tcp", addr, 20)

@@ -55,39 +55,30 @@ func (d *dialer) start() {
 	}
 
 	go func() {
-		consecFailures := 0
+		consecCheckFailures := 0
 		timer := time.NewTimer(longDuration)
 
-		failed := func() {
-			atomic.StoreInt32(&d.active, 0)
-			consecFailures += 1
-			timeout := time.Duration(consecFailures*consecFailures) * 100 * time.Millisecond
-			if timeout > maxCheckTimeout {
-				timeout = maxCheckTimeout
-			}
-			timer.Reset(timeout)
-		}
-
-		succeeded := func() {
-			atomic.StoreInt32(&d.active, 1)
-			consecFailures = 0
-			timer.Reset(longDuration)
-		}
-
 		for {
+			if d.active == 0 {
+				log.Trace("Inactive, scheduling check")
+				timeout := time.Duration(consecCheckFailures*consecCheckFailures) * 100 * time.Millisecond
+				timer.Reset(timeout)
+			}
 			select {
 			case _, ok := <-d.errCh:
 				if !ok {
 					log.Trace("dialer stopped")
 					return
 				}
-				failed()
+				log.Trace("Error, deactivating dialer")
+				atomic.StoreInt32(&d.active, 0)
 			case <-timer.C:
 				ok := d.Check()
 				if ok {
-					succeeded()
+					atomic.StoreInt32(&d.active, 1)
+					timer.Reset(longDuration)
 				} else {
-					failed()
+					consecCheckFailures += 1
 				}
 			}
 		}
