@@ -149,9 +149,10 @@ func TestAll(t *testing.T) {
 	b = New(dialer3)
 	maxCheckTimeout = 100 * time.Millisecond
 	// Dial a bunch of times to hit different failure branches
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 5; i++ {
 		_, err = b.Dial("tcp", addr)
 		assert.Error(t, err, "Dialing should have failed")
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	time.Sleep(1 * time.Second)
