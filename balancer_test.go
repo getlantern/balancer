@@ -45,12 +45,16 @@ func TestAll(t *testing.T) {
 
 	dialedBy := int32(0)
 
+	dialer1Closed := int32(0)
 	dialer1 := &Dialer{
 		Weight: 1,
 		QOS:    10,
 		Dial: func(network, addr string) (net.Conn, error) {
 			atomic.StoreInt32(&dialedBy, 1)
 			return net.Dial(network, addr)
+		},
+		OnClose: func() {
+			atomic.StoreInt32(&dialer1Closed, 1)
 		},
 	}
 	dialer2 := &Dialer{
@@ -106,7 +110,11 @@ func TestAll(t *testing.T) {
 
 	// Test successful single dialer
 	b = New(dialer1)
-	defer b.Close()
+	defer func() {
+		b.Close()
+		time.Sleep(250 * time.Millisecond)
+		assert.Equal(t, int32(1), dialer1Closed, "Dialer 1 should have been closed")
+	}()
 	conn, err := b.Dial("tcp", addr)
 	assert.NoError(t, err, "Dialing should have succeeded")
 	assert.Equal(t, 1, dialedBy, "Wrong dialedBy")

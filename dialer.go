@@ -23,6 +23,9 @@ type Dialer struct {
 	// Dial: this function dials the given network, addr.
 	Dial func(network, addr string) (net.Conn, error)
 
+	// OnClose: (optional) callback for when this dialer is stopped.
+	OnClose func()
+
 	// Check: (optional) - When dialing fails, this Dialer is deactivated (taken
 	// out of rotation). Check is a function that's used periodically after a
 	// failed dial to check whether or not Dial works again. As soon as there is
@@ -74,6 +77,9 @@ func (d *dialer) start() {
 			case t, ok := <-d.errCh:
 				if !ok {
 					log.Trace("dialer stopped")
+					if d.OnClose != nil {
+						d.OnClose()
+					}
 					return
 				}
 				lastFailed = t
