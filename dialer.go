@@ -122,7 +122,7 @@ func (d *dialer) defaultCheck() bool {
 	ok, timedOut, _ := withtimeout.Do(10*time.Second, func() (interface{}, error) {
 		resp, err := client.Get("http://www.google.com/humans.txt")
 		if err != nil {
-			log.Tracef("Error on testing humans.txt: %s", err)
+			log.Debugf("Error on testing humans.txt: %s", err)
 			return false, nil
 		}
 		resp.Body.Close()
