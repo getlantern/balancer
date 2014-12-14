@@ -47,6 +47,7 @@ func TestAll(t *testing.T) {
 
 	dialer1Closed := int32(0)
 	dialer1 := &Dialer{
+		Label:  "Dialer 1",
 		Weight: 1,
 		QOS:    10,
 		Dial: func(network, addr string) (net.Conn, error) {

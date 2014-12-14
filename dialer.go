@@ -11,6 +11,9 @@ import (
 
 // Dialer captures the configuration for dialing arbitrary addresses.
 type Dialer struct {
+	// Label: optional label with which to tag this dialer for debug logging.
+	Label string
+
 	// Weight: determines how often this Dialer is used relative to the other
 	// Dialers on the balancer.
 	Weight int
