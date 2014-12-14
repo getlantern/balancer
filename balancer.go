@@ -30,6 +30,8 @@ func New(dialers ...*Dialer) *Balancer {
 		dl.start()
 		dhs = append(dhs, dl)
 	}
+	// Sort dialers by QOS for later selection
+	sort.Sort(byQOS(dhs))
 	return &Balancer{
 		dialers: dhs,
 	}
@@ -87,7 +89,6 @@ func (b *Balancer) getDialers() []*dialer {
 func randomDialer(dialers []*dialer, targetQOS int) (chosen *dialer, others []*dialer) {
 	// Weed out inactive dialers and those with too low QOS, preferring higher
 	// QOS
-	sort.Sort(byQOS(dialers))
 	filtered := make([]*dialer, 0)
 	highestQOS := 0
 	for _, d := range dialers {
