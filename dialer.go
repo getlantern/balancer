@@ -44,7 +44,7 @@ type Dialer struct {
 
 var (
 	longDuration    = 1000000 * time.Hour
-	maxCheckTimeout = 1 * time.Minute
+	maxCheckTimeout = 5 * time.Second
 )
 
 type dialer struct {

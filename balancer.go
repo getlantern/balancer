@@ -162,7 +162,10 @@ func without(dialers []*dialer, i int) []*dialer {
 	} else if i == len(dialers)-1 {
 		return dialers[:i]
 	} else {
-		return append(dialers[:i], dialers[i+1:]...)
+		c := make([]*dialer, len(dialers)-1)
+		copy(c[:i], dialers[:i])
+		copy(c[i:], dialers[i+1:])
+		return c
 	}
 }
 

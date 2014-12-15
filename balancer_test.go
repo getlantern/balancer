@@ -21,6 +21,44 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+func TestRandomDialer(t *testing.T) {
+	dialers := []*dialer{
+		&dialer{
+			Dialer: &Dialer{
+				Label:  "A",
+				Weight: 90,
+			},
+			active: 1,
+		}, &dialer{
+			Dialer: &Dialer{
+				Label:  "B",
+				Weight: 9,
+			},
+			active: 1,
+		}, &dialer{
+			Dialer: &Dialer{
+				Label:  "C",
+				Weight: 1,
+			},
+			active: 1,
+		},
+	}
+
+	trials := 1000000
+	counts := make(map[string]float64)
+	for i := 0; i < trials; i++ {
+		d, _ := randomDialer(dialers, 0)
+		counts[d.Label] = counts[d.Label] + 1
+	}
+	assertWithinRangeOf(t, counts["A"], .9*float64(trials), .1)
+	assertWithinRangeOf(t, counts["B"], .09*float64(trials), .1)
+	assertWithinRangeOf(t, counts["C"], .01*float64(trials), .1)
+}
+
+func assertWithinRangeOf(t *testing.T, actual float64, expected float64, margin float64) {
+	assert.True(t, actual >= expected*(1-margin) && actual <= expected*(1+margin), fmt.Sprintf("%v not within %v of %v", actual, margin, expected))
+}
+
 func TestAll(t *testing.T) {
 	// Start an echo server
 	l, err := net.Listen("tcp", "localhost:0")
