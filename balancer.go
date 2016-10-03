@@ -127,7 +127,7 @@ func (b *Balancer) Dial(network, addr string) (net.Conn, error) {
 			log.Error(errors.New("Unable to dial via %v to %s://%s: %v on pass %v...continuing", d.Label, network, addr, err, i))
 			continue
 		}
-		log.Tracef("Successfully dialed via %v to %v://%v on pass %v", d.Label, network, addr, i)
+		log.Debugf("Successfully dialed via %v to %v://%v on pass %v", d.Label, network, addr, i)
 		return conn, nil
 	}
 	return nil, fmt.Errorf("Still unable to dial %s://%s after %d attempts", network, addr, dialAttempts)
